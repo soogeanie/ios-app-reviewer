@@ -1,5 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import https from 'node:https'
+import { DEFAULT_HOUR_LIMIT } from '../constants';
+import { getPastDateTime } from '../helpers';
 
 const prisma = new PrismaClient()
 
@@ -21,11 +23,13 @@ type AppStoreFeedReview = {
   content?: { label: string; };
 }
 
-const BASE_URL = 'https://itunes.apple.com/us/rss/customerreviews/'
-const DEFAULT_PAGE = 1
-const DEFAULT_HOUR_LIMIT = 48
+type FindOrCreateReviewsProps = {
+  appId: number;
+  page: number;
+  reviews: AppStoreFeedReview[];
+}
 
-let currentPage = DEFAULT_PAGE
+const BASE_URL = 'https://itunes.apple.com/us/rss/customerreviews/'
 
 const buildAppStoreFeedUrl = ({ appId, page }: AppStoreFeedUrlProps) => {
   const { href } = new URL(`id=${appId}/sortBy=mostRecent/page=${page}/json`, BASE_URL)
@@ -35,9 +39,7 @@ const buildAppStoreFeedUrl = ({ appId, page }: AppStoreFeedUrlProps) => {
 
 // should I move this outside this file?
 const isPastHourLimit = ({ reviewDate, hourLimit }: { reviewDate: Date; hourLimit: number }) => {
-  const now = new Date()
-  now.setHours(now.getHours() - hourLimit)
-  const past = now
+  const past = getPastDateTime(hourLimit)
 
   if (reviewDate < past) return true
 
@@ -45,7 +47,7 @@ const isPastHourLimit = ({ reviewDate, hourLimit }: { reviewDate: Date; hourLimi
 }
 
 // should I move this outside this file?
-const findOrCreateReviews = async (appId: number, reviews: AppStoreFeedReview[]) => {
+const findOrCreateReviews = async ({ appId, page, reviews }: FindOrCreateReviewsProps) => {
   try {
     const reviewsLength = reviews.length
 
@@ -54,6 +56,7 @@ const findOrCreateReviews = async (appId: number, reviews: AppStoreFeedReview[])
       const isLastReview = (i + 1) === reviewsLength
 
       const updatedAt = new Date(review.updated.label)
+
       const formattedReview = {
         id: Number(review.id.label),
         appId: appId,
@@ -73,9 +76,8 @@ const findOrCreateReviews = async (appId: number, reviews: AppStoreFeedReview[])
       if (!result) throw new Error(`Failed to create review [id = ${review.id}].`)
 
       if (isLastReview && !isPastHourLimit({ reviewDate: updatedAt, hourLimit: DEFAULT_HOUR_LIMIT })) {
-        currentPage += 1
 
-        fetchAppStoreReviews({ page: currentPage, appId })
+        fetchAppStoreReviews({ page: page + 1, appId })
       }
     }
   } catch (error) {
@@ -83,14 +85,17 @@ const findOrCreateReviews = async (appId: number, reviews: AppStoreFeedReview[])
   }
 }
 
-export const fetchAppStoreReviews = ({ appId, page }: FetchAppStoreReviewsProps) => {
-  const appStoreFeedUrl = buildAppStoreFeedUrl({ page: page || 1, appId })
+export const fetchAppStoreReviews = ({ appId, page = 1 }: FetchAppStoreReviewsProps) => {
+  console.log(`fetchAppStoreReviews is running page ${page} - timestamp: ${new Date()}`)
+
+  const appStoreFeedUrl = buildAppStoreFeedUrl({ page, appId })
 
   https.get(appStoreFeedUrl, (res) => {
     const { statusCode } = res
 
     if (statusCode !== 200) {
       console.error(`There was a problem fetching reviews from the app store. Status code: ${statusCode}`)
+      console.error(JSON.stringify(res))
 
       return
     }
@@ -107,7 +112,7 @@ export const fetchAppStoreReviews = ({ appId, page }: FetchAppStoreReviewsProps)
       const responseJSON = JSON.parse(responseBody)
       const reviews = responseJSON.feed.entry
 
-      findOrCreateReviews(appId, reviews)
+      findOrCreateReviews({ appId, page, reviews })
     })
   })
 }
