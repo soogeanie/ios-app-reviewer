@@ -1,24 +1,37 @@
-# OS
-.DS_Store
-
 # Logs
 logs
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Dependency directories
 node_modules/
+dist
+dist-ssr
+*.local
 
 # cache
 *.tsbuildinfo
 .npm
 .eslintcache
 
-# Stores VSCode versions used for testing VSCode extensions
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
 .vscode-test
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
 
 # db
 *.db

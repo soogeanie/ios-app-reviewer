@@ -1,0 +1,14 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    @apply font-sans font-normal leading-normal antialiased;
+  }
+  
+  h1 {
+    @apply text-2xl;
+  }
+}
+
