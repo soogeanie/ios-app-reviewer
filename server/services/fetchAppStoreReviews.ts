@@ -1,20 +1,13 @@
-import { PrismaClient } from '@prisma/client'
-import https from 'node:https'
-import { DEFAULT_HOUR_LIMIT } from '../constants';
+import { DEFAULT_HOUR_LIMIT, LAST_PAGE_RSS } from '../constants';
 import { getPastDateTime } from '../helpers';
-
-const prisma = new PrismaClient()
+import { findOrCreateReviews } from '../models/review';
 
 type FetchAppStoreReviewsProps = {
   appId: number;
   page?: number;
 }
 
-type AppStoreFeedUrlProps = FetchAppStoreReviewsProps & {
-  page: number;
-}
-
-type AppStoreFeedReview = {
+export type AppStoreFeedReview = {
   id: { label: string; };
   author: { name: { label: string; } };
   updated: { label: string; };
@@ -23,96 +16,49 @@ type AppStoreFeedReview = {
   content?: { label: string; };
 }
 
-type FindOrCreateReviewsProps = {
-  appId: number;
-  page: number;
-  reviews: AppStoreFeedReview[];
-}
-
 const BASE_URL = 'https://itunes.apple.com/us/rss/customerreviews/'
 
-const buildAppStoreFeedUrl = ({ appId, page }: AppStoreFeedUrlProps) => {
-  const { href } = new URL(`id=${appId}/sortBy=mostRecent/page=${page}/json`, BASE_URL)
-
-  return href
-}
-
-// should I move this outside this file?
-const isPastHourLimit = ({ reviewDate, hourLimit }: { reviewDate: Date; hourLimit: number }) => {
-  const past = getPastDateTime(hourLimit)
-
-  if (reviewDate < past) return true
-
-  return false
-}
-
-// should I move this outside this file?
-const findOrCreateReviews = async ({ appId, page, reviews }: FindOrCreateReviewsProps) => {
+const fetchReviews = async (url: string) => {
   try {
-    const reviewsLength = reviews.length
+    const response = await fetch(url)
 
-    for (let i = 0; i < reviews.length; i++) {
-      const review = reviews[i]
-      const isLastReview = (i + 1) === reviewsLength
-
-      const updatedAt = new Date(review.updated.label)
-
-      const formattedReview = {
-        id: Number(review.id.label),
-        appId: appId,
-        userName: review.author.name.label,
-        updatedAt: updatedAt,
-        rating: Number(review['im:rating'].label),
-        title: review.title?.label,
-        content: review.content?.label
-      }
-
-      const result = await prisma.review.upsert({
-        where: { id: formattedReview.id },
-        update: {},
-        create: formattedReview,
-      })
-
-      if (!result) throw new Error(`Failed to create review [id = ${review.id}].`)
-
-      if (isLastReview && !isPastHourLimit({ reviewDate: updatedAt, hourLimit: DEFAULT_HOUR_LIMIT })) {
-
-        fetchAppStoreReviews({ page: page + 1, appId })
-      }
+    if (!response.ok) {
+      throw new Error(`Network response was not OK. ${response.statusText}`)
     }
+
+    const results = await response.json()
+  
+    return results.feed.entry
   } catch (error) {
     console.error(error)
   }
 }
 
-export const fetchAppStoreReviews = ({ appId, page = 1 }: FetchAppStoreReviewsProps) => {
+const isPastHourLimit = ({ reviewDate, hourLimit }: { reviewDate: Date; hourLimit: number }) => {
+  const past = getPastDateTime(hourLimit)
+  const dateToCompare = new Date(reviewDate)
+
+  if (dateToCompare < past) return true
+
+  return false
+}
+
+export const fetchAppStoreReviews = async ({ appId, page = 1 }: FetchAppStoreReviewsProps) => {
   console.log(`fetchAppStoreReviews is running page ${page} - timestamp: ${new Date()}`)
 
-  const appStoreFeedUrl = buildAppStoreFeedUrl({ page, appId })
+  const appStoreFeedUrl = new URL(`id=${appId}/sortBy=mostRecent/page=${page}/json`, BASE_URL)
 
-  https.get(appStoreFeedUrl, (res) => {
-    const { statusCode } = res
+  const reviews = await fetchReviews(appStoreFeedUrl.href)
 
-    if (statusCode !== 200) {
-      console.error(`There was a problem fetching reviews from the app store. Status code: ${statusCode}`)
-      console.error(JSON.stringify(res))
+  if (!reviews) return
 
-      return
-    }
+  const newReviews = await findOrCreateReviews({ appId, reviews })
 
-    res.setEncoding('utf8')
+  if (!newReviews || page === LAST_PAGE_RSS) return
 
-    let responseBody = ''
+  const lastReviewDate = reviews[reviews.length - 1].updated.label
 
-    res.on('data', (data) => {
-      responseBody += data
-    })
-
-    res.on('end', () => {
-      const responseJSON = JSON.parse(responseBody)
-      const reviews = responseJSON.feed.entry
-
-      findOrCreateReviews({ appId, page, reviews })
-    })
-  })
+  if (!isPastHourLimit({ reviewDate: lastReviewDate, hourLimit: DEFAULT_HOUR_LIMIT })) {
+    fetchAppStoreReviews({ page: page + 1, appId })
+  }
 }

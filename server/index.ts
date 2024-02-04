@@ -8,6 +8,7 @@ import { DEFAULT_POLLING_TIME } from './constants'
 const app = express()
 const port = 3000
 
+const APP_ID = 835599320
 const POLLING_TIMEOUT = 1000 * 60 * DEFAULT_POLLING_TIME
 
 const CORS_OPTIONS = {
@@ -22,7 +23,7 @@ app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`)
 
   // initial fetch
-  fetchAppStoreReviews({ appId: 835599320 })
+  fetchAppStoreReviews({ appId: APP_ID })
 
-  setInterval(fetchAppStoreReviews, POLLING_TIMEOUT, { appId: 835599320 })
+  setInterval(fetchAppStoreReviews, POLLING_TIMEOUT, { appId: APP_ID })
 })
