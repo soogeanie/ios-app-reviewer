@@ -35,6 +35,3 @@ dist-ssr
 
 # db
 *.db
-
-# env
-*.env

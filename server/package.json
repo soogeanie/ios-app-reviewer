@@ -23,6 +23,7 @@
     "typescript": "^5.3.3"
   },
   "scripts": {
+    "db:create": "DATABASE_URL='file:./dev.db' prisma migrate dev",
     "dev": "tsx watch ./index.ts",
     "test": "jest",
     "test:watch": "jest --watch"
