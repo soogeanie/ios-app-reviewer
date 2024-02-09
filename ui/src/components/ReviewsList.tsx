@@ -64,7 +64,7 @@ const ReviewsList = () => {
       <div className="border-b border-gray-200 pb-6">
         {reviews.map((review, index) => (
           <ReviewsListItem
-            key={review.id}
+            key={`${review.id}-${index}`}
             review={review}
             index={index}
           />
