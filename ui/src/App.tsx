@@ -1,4 +1,4 @@
-import ReviewsList from './components/ReviewsList'
+import Reviews from './components/Reviews'
 
 const App = () => {
   return (
@@ -9,7 +9,7 @@ const App = () => {
         <h2 className="border-l border-gray-200 ml-6 pl-6 text-base font-semibold leading-7 text-gray-900">Tiktok</h2>
       </div>
 
-      <ReviewsList />
+      <Reviews />
     </main>
   )
 }

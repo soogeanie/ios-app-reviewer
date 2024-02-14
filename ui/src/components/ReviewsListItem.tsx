@@ -1,6 +1,5 @@
-import { StarIcon } from '@heroicons/react/20/solid';
 import clsx from 'clsx';
-import { Review } from './ReviewsList'
+import { Review } from './constants'
 import StarRating from './StarRating';
 
 type ReviewProps = {
