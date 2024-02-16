@@ -1,19 +1,10 @@
 import { DEFAULT_HOUR_LIMIT, LAST_PAGE_RSS } from '../constants';
-import { findOrCreateReviews } from '../models/review';
 import { fetchReviews, isWithinHourLimit } from './helpers';
+import prisma from '../models/review';
 
 type FetchAppStoreReviewsProps = {
   appId: number;
   page?: number;
-}
-
-export type AppStoreFeedReview = {
-  id: { label: string; };
-  author: { name: { label: string; } };
-  updated: { label: string; };
-  "im:rating": { label: string; };
-  title?: { label: string; };
-  content?: { label: string; };
 }
 
 const BASE_URL = 'https://itunes.apple.com/us/rss/customerreviews/'
@@ -25,7 +16,7 @@ export const fetchAppStoreReviews = async ({ appId, page = 1 }: FetchAppStoreRev
 
   if (!reviews) return
 
-  const newReviews = await findOrCreateReviews({ appId, reviews })
+  const newReviews = await prisma.review.findOrCreateReviews({ appId, reviews })
 
   if (!newReviews || page === LAST_PAGE_RSS) return
 

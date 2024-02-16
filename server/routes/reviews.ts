@@ -1,10 +1,10 @@
-import { Prisma, PrismaClient } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 import express from 'express'
-import { DEFAULT_HOUR_LIMIT } from '../constants'
+import { DEFAULT_APP_ID, DEFAULT_HOUR_LIMIT } from '../constants'
 import { getPastDateTime } from '../helpers'
+import prisma from '../models/review'
 
 const router = express.Router()
-const prisma = new PrismaClient
 
 type QueryParams = {
   limit?: number;
@@ -38,11 +38,18 @@ router.get('/', async (req, res) => {
 
   const past = getPastDateTime(pastHours)
 
-  const reviews = await prisma.review.findMany({
+  const results = await prisma.review.findManyReviews({
     where: {
-      updatedAt: {
-        gte: past
-      }
+      AND: [
+        {
+          appId: DEFAULT_APP_ID,
+        },
+        {
+          updatedAt: {
+            gte: past
+          }
+        }
+      ]
     },
     skip: offset,
     take: limit,
@@ -51,7 +58,7 @@ router.get('/', async (req, res) => {
     }
   })
 
-  res.status(200).json({ reviews, page, pastHours, sort })
+  res.status(200).json({ pastHours, page, limit, sort, ...results })
 })
 
 export default router;
