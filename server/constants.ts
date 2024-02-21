@@ -1,4 +1,5 @@
 const DEFAULT_APP_ID = 835599320 // tiktok
+// const DEFAULT_APP_ID = 389801252
 const DEFAULT_POLLING_TIME = 15 // in minutes
 const DEFAULT_HOUR_LIMIT = 48 // in hours
 const LAST_PAGE_RSS = 10 // RSS feed returns a max of 10 pages of results

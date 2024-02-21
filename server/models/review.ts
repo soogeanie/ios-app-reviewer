@@ -14,6 +14,16 @@ type FindOrCreateReviewsProps = {
   reviews: AppStoreFeedReview[];
 }
 
+export type Review = {
+  id: bigint;
+  appId: bigint;
+  title?: string | null;
+  content?: string | null;
+  rating: number;
+  updatedAt: Date;
+  userName: string;
+}
+
 type FindManyReviewsQuery = {
   where: any;
   skip?: number;
@@ -31,9 +41,9 @@ const prisma = new PrismaClient().$extends({
           for (let i = 0; i < reviews.length; i++) {
             const review = reviews[i]
 
-            const formattedReview = {
-              id: Number(review.id.label),
-              appId: appId,
+            const formattedReview: Review = {
+              id: BigInt(Number(review.id.label)),
+              appId: BigInt(appId),
               userName: review.author.name.label,
               updatedAt: new Date(review.updated.label),
               rating: Number(review['im:rating'].label),

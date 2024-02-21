@@ -1,40 +1,46 @@
 import { useEffect, useReducer, useState } from 'react';
 import ReviewsList from './ReviewsList'
-import { Review, SortParams } from './constants';
+import { DEFAULT_PAGES, PagesState, Review, SortParams } from './constants';
 import FilterByHours from './FilterByHours';
 import SortButton from './SortButton';
+import Pagination from './Pagination';
 
-type ReviewsState = {
+export type ReviewsState = {
   reviews: Review[];
-  page: number;
+  total: number;
+  limit: number;
   pastHours: number;
   sort: SortParams;
+  pages: PagesState;
 }
 
 const DEFAULT_REVIEWS_STATE: ReviewsState = {
   reviews: [],
-  page: 1,
+  total: 0,
+  limit: 20,
   pastHours: 48,
-  sort: 'desc'
+  sort: 'desc',
+  pages: DEFAULT_PAGES
 }
 
 const ACTIONS = {
   SET_REVIEWS: 'setReviews'
 }
 
-type FetchReviewsProps = Partial<Omit<ReviewsState, 'reviews'>>;
+// type FetchReviewsProps = Partial<Omit<ReviewsState, 'reviews'>>;
+type FetchReviewsProps = Partial<Pick<ReviewsState, 'limit' | 'pastHours' | 'sort'>> & {
+  page?: number;
+}
 
 const reviewsReducer = (state, action) => {
   switch(action.type) {
     case ACTIONS.SET_REVIEWS: {
-      const updatedReviews = state.page === action.page || state.sort !== action.sort
-        ? [...action.reviews]
-        : [...state.reviews, ...action.reviews]
 
       return {
         ...state,
-        reviews: updatedReviews,
-        page: action.page,
+        reviews: [...action.reviews],
+        total: action.total,
+        pages: action.pages,
         sort: action.sort,
         pastHours: action.pastHours
       }
@@ -54,12 +60,12 @@ const Reviews = () => {
     setIsFetchingReviews(true)
     setError(null)
 
-    const page = options?.page || 1
+    const currentPage = options?.page || state.pages.current
     const pastHours = options?.pastHours || state.pastHours
     const sort = options?.sort || state.sort
 
     try {
-      const url = `http://localhost:3000/reviews?page=${page}&pastHours=${pastHours}&sort=${sort}`
+      const url = `http://localhost:3000/reviews?page=${currentPage}&pastHours=${pastHours}&sort=${sort}`
 
       const response = await fetch(url)
 
@@ -67,10 +73,13 @@ const Reviews = () => {
 
       const data = await response.json()
 
+      console.log('data', data)
+
       dispatch({
         type: ACTIONS.SET_REVIEWS,
         reviews: data.reviews,
-        page,
+        total: data.total,
+        pages: data.pages,
         pastHours,
         sort
       })
@@ -85,20 +94,6 @@ const Reviews = () => {
     fetchReviews()
   }, [])
 
-  const handleScroll = () => {
-    if (window.innerHeight + document.documentElement.scrollTop !== document.documentElement.offsetHeight || isFetchingReviews) {
-      return;
-    }
-
-    fetchReviews({ page: state.page + 1})
-  }
-
-  useEffect(() => {
-    window.addEventListener('scroll', handleScroll)
-
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [isFetchingReviews])
-
   return (
     <div className="mx-auto max-w-2xl py-16">
       <div className="border-b border-gray-200 pb-6 flex items-center justify-between">
@@ -112,6 +107,11 @@ const Reviews = () => {
       </div>
 
       <ReviewsList reviews={state.reviews} />
+
+      <Pagination
+        pages={state.pages}
+        onHandlePagination={(page) => fetchReviews({ page })}
+      />
     </div>
   )
 }
