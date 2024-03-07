@@ -60,7 +60,7 @@ const Reviews = () => {
     setIsFetchingReviews(true)
     setError(null)
 
-    const currentPage = options?.page || state.pages.current
+    const currentPage = options?.page || state.pages.currentPage
     const pastHours = options?.pastHours || state.pastHours
     const sort = options?.sort || state.sort
 

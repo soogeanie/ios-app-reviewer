@@ -14,10 +14,10 @@ type QueryParams = {
 }
 
 type PagesProps = {
-  total: number;
-  current: number;
-  next?: number | null;
-  prev?: number | null;
+  totalPages: number | null;
+  currentPage: number;
+  nextPage: number | null;
+  prevPage: number | null;
 }
 
 type ReviewsResponse = Pick<QueryParams, 'limit' | 'sort'> & {
@@ -31,6 +31,13 @@ const DEFAULT_QUERY_PARAMS = Object.freeze({
   offset: 0,
   page: 1,
   sort: 'desc'
+})
+
+const DEFAULT_PAGES: PagesProps = Object.freeze({
+  totalPages: null,
+  currentPage: 1,
+  nextPage: null,
+  prevPage: null
 })
 
 // fix for BigInt value TypeError
@@ -69,15 +76,22 @@ router.get('/', async (req, res) => {
     }
   })
 
-  const totalPages = !!results.total ? Number(Math.ceil(results.total / limit)) : 0
-  const currentPage = !!results.total ? page : 1
+  let totalPages = DEFAULT_PAGES.totalPages
+  let currentPage = DEFAULT_PAGES.currentPage
+  let nextPage = DEFAULT_PAGES.nextPage
+  let prevPage = DEFAULT_PAGES.prevPage
 
-  const pages: PagesProps = {
-    total: totalPages,
-    current: currentPage,
-    next: totalPages > 1 ? currentPage + 1 : null,
-    prev: currentPage > 1 ? currentPage - 1 : null
+  if (!!results.total) {
+    totalPages = Number(Math.ceil(results.total / limit))
+    currentPage = page
   }
+
+  if (!!totalPages) {
+    nextPage = currentPage !== totalPages ? currentPage + 1 : null
+    prevPage = currentPage > 1 ? currentPage - 1 : null
+  }
+
+  const pages: PagesProps = { totalPages, currentPage, nextPage, prevPage }
 
   const response: ReviewsResponse = {
     ...results,
